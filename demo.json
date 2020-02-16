@@ -1,0 +1,20 @@
+{
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_max_word",
+        "fielddata": "true",
+        "term_vector": "with_positions_offsets"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_max_word",
+        "fielddata": "true",
+        "term_vector": "with_positions_offsets"
+      }
+    }
+  }
+}
