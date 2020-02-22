@@ -13,7 +13,8 @@ import (
 func main(){
 	model.ModelInit()
 	defer model.ModelClose()
-	es.EsInit()
 	modelData,_:=model.SelectAll()
-	es.WriteData(modelData)
+	es.EsInit(modelData)
+	//es.WriteData(modelData)
+	//es.AnalyzeData()
 }

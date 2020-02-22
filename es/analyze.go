@@ -1,6 +1,7 @@
 package es
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/olivere/elastic"
@@ -22,7 +23,6 @@ import (
 // 后面发现库中有批量写入的接口故还
 // 是采用库中的接口
 func WriteData(reminders []model.Reminder) {
-
 	////分桶数量设置为100
 	//bucketNum:=100
 	//
@@ -55,7 +55,7 @@ func WriteData(reminders []model.Reminder) {
 	//return
 
 	//初始化批量操作接口
-	bulkRequest := client.Bulk()
+	bulkRequest := Client.Bulk()
 
 	for _, v := range reminders {
 		doc := elastic.NewBulkIndexRequest().Index(indexName).Id(strconv.Itoa(int(v.ID))).Doc(v)
@@ -63,7 +63,7 @@ func WriteData(reminders []model.Reminder) {
 	}
 
 	//执行操作
-	response, err := bulkRequest.Do(ctx)
+	response, err := bulkRequest.Do(Ctx)
 	if err != nil {
 		log.Println(err)
 		return
@@ -76,17 +76,21 @@ func WriteData(reminders []model.Reminder) {
 		fmt.Printf("Error(%d)", l, response.Errors)
 	}
 
+
+
+
 }
 
 //ModelData 向es中插入文档
 func WriteDocument(reminders []model.Reminder, wait *sync.WaitGroup) (err error) {
+	Ctx:=context.Background()
 	defer wait.Done()
 	for _, v := range reminders {
-		_, err = client.Index().
+		_, err = Client.Index().
 			Index(indexName).
 			Id(strconv.Itoa(int(v.ID))).
 			BodyJson(v).
-			Do(ctx)
+			Do(Ctx)
 		if err != nil {
 			log.Println(err)
 		}
@@ -106,8 +110,9 @@ type Bucket struct {
 
 //AnalyzeData 分析文档中title的热词
 func AnalyzeData() (err error) {
-	termQuery := elastic.NewTermsAggregation().Size(1000).Field("title")
-	result, err := client.Search().Index(indexName).Aggregation("messages", termQuery).Do(ctx)
+
+	termQuery := elastic.NewTermsAggregation().Size(100).Field("title").Include("[\u4E00-\u9FA5][\u4E00-\u9FA5]")
+	result, err := Client.Search().Index(indexName).Aggregation("messages", termQuery).Do(Ctx)
 	if err != nil {
 		log.Println(err)
 		return

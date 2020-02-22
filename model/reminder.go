@@ -12,7 +12,7 @@ type Reminder struct{
 }
 
 func SelectAll()(reminders []Reminder,err error){
-	if err:=DB.Table("cyxbsmobile_transaction").Select("id, title, content").Limit(1000).Find(&reminders).Error;err!=nil{
+	if err:=DB.Table("cyxbsmobile_transaction").Select("id, title, content").Find(&reminders).Error;err!=nil{
 		return nil,err
 	}
 	return

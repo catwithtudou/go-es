@@ -7,8 +7,12 @@ package es
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/olivere/elastic/v7"
+	"go-es/model"
 	"log"
+	"strconv"
 )
 
 
@@ -45,8 +49,8 @@ const (
 
 //ES客户端
 var (
-	client *elastic.Client
-	ctx    context.Context
+	Client *elastic.Client
+	Ctx    context.Context
 )
 
 
@@ -54,17 +58,17 @@ var (
 
 
 //EsInit 初始化ES连接获取客户端
-func EsInit() {
-	ctx = context.Background()
+func EsInit(reminders []model.Reminder) {
+	Ctx = context.Background()
 
-	client, err := elastic.NewClient(elastic.SetURL(serverUrl))
+	Client, err := elastic.NewClient(elastic.SetURL(serverUrl))
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
 	//检查索引是否存在
-	exists, err := client.IndexExists(indexName).Do(ctx)
+	exists, err := Client.IndexExists(indexName).Do(Ctx)
 	if err!=nil{
 		log.Println(err)
 		return
@@ -72,13 +76,60 @@ func EsInit() {
 	//若不存在则创造索引
 	if !exists{
 		//生成映射,创造索引
-		_,err:=client.CreateIndex(indexName).BodyString(mapping).Do(ctx)
+		_,err:=Client.CreateIndex(indexName).BodyString(mapping).Do(Ctx)
 		if err!=nil{
 			log.Println(err)
 			return
 		}
 	}
 
+
+	//插入数据
+	//初始化批量操作接口
+	bulkRequest := Client.Bulk()
+
+	for _, v := range reminders {
+		doc := elastic.NewBulkIndexRequest().Index(indexName).Id(strconv.Itoa(int(v.ID))).Doc(v)
+		bulkRequest = bulkRequest.Add(doc)
+	}
+
+	//执行操作
+	response, err := bulkRequest.Do(Ctx)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	//打印失败次数
+	failed := response.Failed()
+	l := len(failed)
+	if l > 0 {
+		fmt.Printf("Error(%d)", l, response.Errors)
+	}
+
+
+
+
+	//分析数据
+	termQuery := elastic.NewTermsAggregation().Size(100).Field("title")
+	result, err := Client.Search().Index(indexName).Aggregation("messages", termQuery).Do(Ctx)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	data := &AnalyzeItem{}
+	messages, _ := result.Aggregations["messages"].MarshalJSON()
+	err = json.Unmarshal(messages, &data)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for _, v := range data.Buckets {
+		fmt.Println("Key:" + v.Key)
+		fmt.Printf("Count:%d\n",v.DocCount)
+	}
 }
 
 
